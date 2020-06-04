@@ -64,6 +64,7 @@ module WashOut
         operation = case type
           when 'string';       :to_s
           when 'integer';      :to_i
+          when 'long';         :to_i
           when 'double';       :to_f
           when 'boolean';      lambda{|dat| dat === "0" ? false : !!dat}
           when 'date';         :to_date
@@ -170,6 +171,15 @@ module WashOut
       copy
     end
 
+    def attribute?
+      name[0] == "@"
+    end
+
+    def attr_name
+      raise 'Not attribute' unless attribute?
+      name[1..-1]
+    end
+
     private
 
     # Used to load an entire structure.
@@ -184,7 +194,8 @@ module WashOut
       # RUBY18 Enumerable#each_with_object is better, but 1.9 only.
       @map.map do |param|
         if data.has_key? param.raw_name
-          struct[param.raw_name] = yield param, data, param.raw_name
+          param_name = param.attribute? ? param.attr_name : param.raw_name
+          struct[param_name] = yield param, data, param.raw_name
         end
       end
 

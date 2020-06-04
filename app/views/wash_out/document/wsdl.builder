@@ -22,6 +22,19 @@ xml.definitions @additional_namespaces.merge({
     end
   end
 
+  @map.each do |operation, formats|
+    xml.message :name => "#{operation}" do
+      formats[:in].each do |p|
+        xml.part wsdl_occurence(p, false, :name => p.name, :type => p.namespaced_type)
+      end
+    end
+    xml.message :name => formats[:response_tag] do
+      formats[:out].each do |p|
+        xml.part wsdl_occurence(p, false, :name => p.name, :type => p.namespaced_type)
+      end
+    end
+  end
+
   xml.portType :name => "#{@name}_port" do
     @map.each do |operation, formats|
       xml.operation :name => operation do
@@ -50,9 +63,9 @@ xml.definitions @additional_namespaces.merge({
     end
   end
 
-  xml.service :name => "service" do
+  xml.service :name => @service_name do
     xml.port :name => "#{@name}_port", :binding => "tns:#{@name}_binding" do
-      xml.tag! "soap:address", :location => send("#{@name}_action_url")
+      xml.tag! "soap:address", :location => WashOut::Router.url(request, @name)
     end
   end
 
