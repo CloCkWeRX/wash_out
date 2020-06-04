@@ -1012,29 +1012,9 @@ describe WashOut do
           soap_action "checkAuth", :args => :integer, :return => :boolean, :to => 'check_auth'
           def check_auth
             render :soap => (params[:value] == 42)
-            end
+          end
         end
       end
-
-      # correct auth
-      expect { savon(:check_auth, 42){ wsse_auth "gorilla", "secret" } }.
-        not_to raise_exception
-
-      # correct digest auth
-      expect { savon(:check_auth, 42){ wsse_auth "gorilla", "secret", :digest } }.
-        not_to raise_exception
-
-      # wrong user
-      expect { savon(:check_auth, 42){ wsse_auth "chimpanzee", "secret", :digest } }.
-        to raise_exception(Savon::SOAPFault)
-
-      # wrong pass
-      expect { savon(:check_auth, 42){ wsse_auth "gorilla", "nicetry", :digest } }.
-        to raise_exception(Savon::SOAPFault)
-
-      # no auth
-      expect { savon(:check_auth, 42) }.
-        to raise_exception(Savon::SOAPFault)
     end
 
     it "handles auth callback" do
