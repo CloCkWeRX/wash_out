@@ -24,7 +24,6 @@ SIMPLE_RESPONSE_XML = <<-SIMPLE_RESPONSE_XML_HEREDOC
 </soap:Envelope>
 SIMPLE_RESPONSE_XML_HEREDOC
 
-
 describe WashOut do
 
   let :nori do
@@ -978,6 +977,45 @@ describe WashOut do
 
       savon(:check_token, 42) do
         wsse_auth "gorilla", "secret"
+      end
+    end
+
+    context "with a huge string request" do
+      # Over 11MB of 'aaa'
+      let(:huge_data) {
+        "a" * (1024 * 1024 * 11)
+      }
+
+      let(:soap_request_xml) {
+        %Q{<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+   <soapenv:Header>
+      <AuthHeader xsi:type="ns:vAuthHeader">
+      <userName xsi:type="xsd:string">gorilla</userName>
+      <password xsi:type="xsd:string">secret</password>
+    </AuthHeader>
+   </soapenv:Header>
+  <soapenv:Body>
+    <ns:checkToken soapenv:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+      <checkToken xsi:type="xsd:string"><![CDATA[#{huge_data}]]></checkToken>
+    </ns:checkToken>
+   </soapenv:Body>
+</soapenv:Envelope>}
+      }
+
+      it "does not trigger libxml2 parsing limitations" do
+        mock_controller(wsse_username: "gorilla", wsse_password: "secret", parser: :nokogiri) do
+          soap_action "checkToken", :args => :integer, :return => nil, :to => 'check_token'
+          def check_token
+            expect(request.env['WSSE_TOKEN']['username']).to eq "gorilla"
+            expect(request.env['WSSE_TOKEN']['password']).to eq "secret"
+            render :soap => nil
+          end
+        end
+
+        savon  = Savon::Client.new(:log => false, :wsdl => 'http://app/route/api/wsdl')
+
+        expect { savon.call(:check_token, xml: soap_request_xml) }.not_to raise_exception
       end
     end
 
